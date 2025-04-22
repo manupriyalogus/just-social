@@ -133,10 +133,3 @@ If group chat synchronization is not working:
 1. Click the attachment icon (📎) in the message input area.
 2. Select the file you want to share.
 3. Click "Send" to share the file.
-
-## Security Considerations
-
-Just Social uses Tor and end-to-end encryption to protect your privacy.
-Messages are stored locally on your device and are not saved on any central server.
-Your connection information should be shared securely with your contacts.
-Avoid sharing personally identifiable information in your messages.
