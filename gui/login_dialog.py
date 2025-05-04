@@ -76,24 +76,25 @@ class LoginDialog(wx.Dialog):
         self.username_ctrl = wx.TextCtrl(panel, size=(250, -1))
 
         # Password field
-        password_label = wx.StaticText(panel, label="Password:")
-        self.password_ctrl = wx.TextCtrl(panel, style=wx.TE_PASSWORD,
-                                         size=(250, -1))
-
-        # Remember me checkbox
-        self.remember_cb = wx.CheckBox(panel, label="Remember me")
+        # password_label = wx.StaticText(panel, label="Password:")
+        # self.password_ctrl = wx.TextCtrl(panel, style=wx.TE_PASSWORD,
+        #                                  size=(250, -1))
+        #
+        # # Remember me checkbox
+        # self.remember_cb = wx.CheckBox(panel, label="Remember me")
 
         # Add fields to sizer with some spacing
         sizer.AddSpacer(10)
         sizer.Add(username_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
         sizer.Add(self.username_ctrl, 0, wx.EXPAND | wx.ALL, 5)
         sizer.AddSpacer(10)
-
-        sizer.Add(password_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
-        sizer.Add(self.password_ctrl, 0, wx.EXPAND | wx.ALL, 5)
-        sizer.AddSpacer(10)
-
-        sizer.Add(self.remember_cb, 0, wx.ALL, 10)
+        self.password_ctrl =''
+        self.remember_cb = True
+        # sizer.Add(password_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
+        # sizer.Add(self.password_ctrl, 0, wx.EXPAND | wx.ALL, 5)
+        # sizer.AddSpacer(10)
+        #
+        # sizer.Add(self.remember_cb, 0, wx.ALL, 10)
 
         panel.SetSizer(sizer)
         return panel
@@ -119,7 +120,7 @@ class LoginDialog(wx.Dialog):
     def on_login(self, event):
         """Handle login button click"""
         username = self.username_ctrl.GetValue().strip()
-        password = self.password_ctrl.GetValue().strip()
+        # password = self.password_ctrl.GetValue().strip()
         if not username:
             wx.MessageBox("Please enter both username and password",
                           "Error",
@@ -129,13 +130,16 @@ class LoginDialog(wx.Dialog):
         # Store credentials
         self.credentials = {
             'user_id': username,
-            'password': password,  # In real app, this should be hashed
-            'remember': self.remember_cb.GetValue()
+       #     'password': password,  # In real app, this should be hashed
+            'password': "",  # In real app, this should be hashed
+        #    'remember': self.remember_cb.GetValue()
+            'remember': True
+
         }
 
         # Save credentials if remember me is checked
-        if self.remember_cb.GetValue():
-            self.save_credentials()
+        # if self.remember_cb.GetValue():
+        #     self.save_credentials()
 
         event.Skip()
 

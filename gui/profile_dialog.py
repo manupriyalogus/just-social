@@ -10,17 +10,12 @@ import wx.adv
 class ProfileDialog(wx.Dialog):
     def __init__(self, parent, user_data, messenger, keys_file):
         super().__init__(parent, title="Profile", size=(500, 600))
-        self.userid_ctrl = None
-        self.pubkey_ctrl = None
-        self.onion_ctrl = None
-        self.username_ctrl = None
-        self.profile_image = None
         self.user_data = user_data
         self.messenger = messenger
         self.keys_file = keys_file
         self.init_ui()
         self.Center()
-        self.app_name = "JustSocial"
+        self.app_name = "WhatsAppClone"
         self.data_dir = appdirs.user_data_dir(self.app_name)
 
     def init_ui(self):

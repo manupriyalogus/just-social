@@ -17,10 +17,6 @@ class MessageEvent(wx.PyCommandEvent):
 class MessageInput(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.send_btn = None
-        self.input_ctrl = None
-        self.attach_btn = None
-        self.emoji_btn = None
         self.attachments = []
         self.init_ui()
 
@@ -66,8 +62,9 @@ class MessageInput(wx.Panel):
         self.input_ctrl.WriteText(event.emoji)
 
     def on_attach(self, event):
-        with wx.FileDialog(self, "Choose files", wildcard="All files (*.*)|*.*",
-                           style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as dialog:
+        with wx.FileDialog(self, "Choose files", wildcard=
+                          "All files (*.*)|*.*",
+                          style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE) as dialog:
 
             if dialog.ShowModal() == wx.ID_CANCEL:
                 return
@@ -94,7 +91,7 @@ class MessageInput(wx.Panel):
 
         # Create and post message event
         evt = MessageEvent(wxEVT_MESSAGE_SEND, self.GetId(),
-                           message, self.attachments)
+                          message, self.attachments)
         wx.PostEvent(self, evt)
 
         # Clear input
@@ -121,43 +118,40 @@ class MessageInput(wx.Panel):
         else:
             return 'file'
 
-
 class EmojiPicker(wx.Frame):
     def __init__(self, parent):
-        super().__init__(parent, title="Emoji Picker",
-                         style=wx.FRAME_FLOAT_ON_PARENT | wx.FRAME_TOOL_WINDOW)
-
+        super().__init__(parent, title="Emoji Picker", 
+                        style=wx.FRAME_FLOAT_ON_PARENT | wx.FRAME_TOOL_WINDOW)
+        
         self.init_ui()
-
+        
     def init_ui(self):
         panel = wx.Panel(self)
         grid = wx.GridSizer(8, 8, 2, 2)
-
+        
         # Basic emoji set
         emojis = ["😊", "😂", "😍", "🤔", "😅", "😭", "😘", "🙄",
                   "😩", "😡", "😢", "😜", "😞", "😱", "😳", "😴",
                   "👍", "👎", "👌", "✌️", "🤞", "👊", "✋", "🤚",
                   "❤️", "💔", "💖", "💙", "💚", "💛", "💜", "🖤"]
-
+        
         for emoji in emojis:
             btn = wx.Button(panel, label=emoji, size=(30, 30))
             btn.Bind(wx.EVT_BUTTON, lambda evt, e=emoji: self.on_emoji_select(evt, e))
             grid.Add(btn, 0, wx.ALL, 1)
-
+            
         panel.SetSizer(grid)
         self.Fit()
-
+        
     def on_emoji_select(self, event, emoji):
         # Create and post emoji select event
         evt = EmojiEvent(wxEVT_EMOJI_SELECT, self.GetId(), emoji)
         wx.PostEvent(self.GetParent(), evt)
         self.Close()
 
-
 # Custom event for emoji selection
 wxEVT_EMOJI_SELECT = wx.NewEventType()
 EVT_EMOJI_SELECT = wx.PyEventBinder(wxEVT_EMOJI_SELECT, 1)
-
 
 class EmojiEvent(wx.PyCommandEvent):
     def __init__(self, etype, eid, emoji):

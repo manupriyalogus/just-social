@@ -1,13 +1,11 @@
 import wx
 import wx.aui
-import time
 
 from .add_conatct_dialog import AddContactDialog
 from .chat_panel import ChatPanel
 from .contact_list import ContactList
 from .settings_dialog import SettingsDialog
 from .profile_dialog import ProfileDialog
-from .group_message_bubble import GroupChatPanel
 import os
 
 # Define the custom event type
@@ -32,7 +30,6 @@ class MainWindow(wx.Frame):
         self.splitter = None
         self.contact_list = None
         self.chat_panel = None
-        self.group_chat_panel = None
         self.panel = None
         self.profile_pic = None
 
@@ -54,7 +51,7 @@ class MainWindow(wx.Frame):
         # Bind events
         self.Bind(wx.EVT_CLOSE, self.on_close)
 
-        self.Bind(EVT_CONTACT_LIST_UPDATE, self.on_contact_list_update)  # Bind the event
+        self.Bind(EVT_CONTACT_LIST_UPDATE, self.on_contact_list_update) # Bind the event
         self.connect_panels()
 
     def init_ui(self):
@@ -78,24 +75,11 @@ class MainWindow(wx.Frame):
         # Create contact list panel
         self.contact_list = ContactList(self.splitter, self.db)
 
-        # Create notebook for different chat types
-        self.chat_notebook = wx.Notebook(self.splitter)
-
-        # Create regular chat panel
-        self.chat_panel = ChatPanel(self.chat_notebook, self.db, self.messenger, self.config)
-
-        # Create group chat panel
-        self.group_chat_panel = GroupChatPanel(self.chat_notebook, self.db, self.messenger)
-
-        # Add panels to notebook
-        self.chat_notebook.AddPage(self.chat_panel, "Chats")
-        self.chat_notebook.AddPage(self.group_chat_panel, "Group Chats")
-
-        # Hide the notebook tabs - we'll control which page is shown programmatically
-        self.chat_notebook.SetPadding((0, 0))
+        # Create chat panel
+        self.chat_panel = ChatPanel(self.splitter, self.db, self.messenger,self.config)
 
         # Set up splitter
-        self.splitter.SplitVertically(self.contact_list, self.chat_notebook, 300)
+        self.splitter.SplitVertically(self.contact_list, self.chat_panel, 300)
         self.splitter.SetMinimumPaneSize(200)
         self.splitter.SetSashPosition(300)
 
@@ -149,8 +133,8 @@ class MainWindow(wx.Frame):
         settings_btn = wx.Button(panel, label="🔧", size=(40, -1))
         settings_btn.Bind(wx.EVT_BUTTON, self.on_settings)
 
-        # add contact
-        add_contact_btn = wx.Button(panel, label="➕", size=(40, -1))
+        #add contact
+        add_contact_btn = wx.Button(panel,  label="➕", size=(40, -1))
         add_contact_btn.Bind(wx.EVT_BUTTON, self.on_add_contact)
 
         tools_sizer.Add(self.search_ctrl, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 5)
@@ -236,8 +220,7 @@ class MainWindow(wx.Frame):
         dialog = SettingsDialog(self, self.config)
         dialog.ShowModal()
         dialog.Destroy()
-
-    def on_add_contact(self, event):
+    def on_add_contact (self, event):
         dialog = AddContactDialog(self, self.user_data, self.messenger, self.db)
         dialog.ShowModal()
         dialog.Destroy()
@@ -296,152 +279,50 @@ class MainWindow(wx.Frame):
     def handle_new_message(self, message_data):
         """Handle incoming messages"""
         try:
-            # Check if this is a group invitation
-            if message_data.get('is_group_invitation'):
-                self.handle_group_invitation(message_data)
-                return
+            sender_id = message_data['sender_id']
+            message = message_data['message']
+            sender_public_key = message_data['sender_public_key']
+            timestamp = message_data['timestamp']
 
-            # Check if this is a group message
-            if message_data.get('is_group_message'):
-                # Handle group messages
-                group_id = message_data.get('group_id')
+            contact = self.db.get_contact(sender_id)
+            if not contact:
+                # Add new contact to database
+                self.db.add_contact(sender_public_key, sender_id)  # Use sender_id as name if not available
 
-                # Save to database
-                self.db.add_group_message(
-                    group_id,
-                    message_data['sender_id'],
-                    message_data['message'],
-                    'received',
-                    None,  # No attachments for now
-                    message_data.get('timestamp', time.time())
-                )
+            # Add message to database
+            self.db.add_message(
+                sender_id,
+                message,
+                'received'
+            )
 
-                # Update UI if this is the current group chat
-                if self.chat_notebook.GetSelection() == 1 and \
-                        hasattr(self.group_chat_panel, 'current_group_id') and \
-                        self.group_chat_panel.current_group_id == group_id:
-                    self.group_chat_panel.update_messages()
-                else:
-                    # Show notification
-                    group = self.db.get_group(group_id)
-                    if self.notification_handler:
-                        self.notification_handler.show_notification(
-                            "New Group Message",
-                            f"New message in {group['name'] if group else 'a group'}"
-                        )
+            # Refresh contact list - try both methods for reliability
+            # Method 1: Direct call with CallAfter
+            wx.CallAfter(self.contact_list.refresh_contacts)
 
-                # Update group list to show unread message
-                self.contact_list.update_unread_count(group_id, 1, is_group=True)
+            # Method 2: Event-based approach
+            event = wx.PyCommandEvent(wxEVT_CONTACT_LIST_UPDATE, self.GetId())
+            wx.PostEvent(self, event)
 
-                # Refresh contact/group list
-                wx.CallAfter(self.contact_list.refresh_contacts)
-
+            # Update UI if this is the current chat
+            if hasattr(self.chat_panel, 'current_chat_id') and \
+                    self.chat_panel.current_chat_id == sender_id:
+                self.chat_panel.update_messages()
             else:
-                # Handle direct messages
-                sender_id = message_data['sender_id']
-                message = message_data['message']
-                sender_public_key = message_data['sender_public_key']
-                timestamp = message_data.get('timestamp', time.time())
-
+                # Show notification
                 contact = self.db.get_contact(sender_id)
-                if not contact:
-                    # Add new contact to database
-                    self.db.add_contact(sender_public_key, sender_id)  # Use sender_id as name if not available
+                if self.notification_handler:
+                    self.notification_handler.show_notification(
+                        "New Message",
+                        f"New message from {contact['name'] if contact else sender_id}"
+                    )
 
-                # Add message to database
-                self.db.add_message(
-                    sender_id,
-                    message,
-                    'received'
-                )
-
-                # Refresh contact list - try both methods for reliability
-                # Method 1: Direct call with CallAfter
-                wx.CallAfter(self.contact_list.refresh_contacts)
-
-                # Method 2: Event-based approach
-                event = wx.PyCommandEvent(wxEVT_CONTACT_LIST_UPDATE, self.GetId())
-                wx.PostEvent(self, event)
-
-                # Update UI if this is the current chat
-                if self.chat_notebook.GetSelection() == 0 and \
-                        hasattr(self.chat_panel, 'current_chat_id') and \
-                        self.chat_panel.current_chat_id == sender_id:
-                    self.chat_panel.update_messages()
-                else:
-                    # Show notification
-                    contact = self.db.get_contact(sender_id)
-                    if self.notification_handler:
-                        self.notification_handler.show_notification(
-                            "New Message",
-                            f"New message from {contact['name'] if contact else sender_id}"
-                        )
-
-                # Update contact list to show unread message
-                self.contact_list.update_unread_count(sender_id,
-                                                      self.db.get_unread_count(sender_id))
+            # Update contact list to show unread message
+            self.contact_list.update_unread_count(sender_id,
+                                                  self.db.get_unread_count(sender_id))
 
         except Exception as e:
             self.logger.error(f"Error handling new message: {e}")
-            import traceback
-            traceback.print_exc()
-
-    def handle_group_invitation(self, message_data):
-        """Handle incoming group invitation"""
-        try:
-            group_id = message_data.get('group_id')
-            group_name = message_data.get('group_name')
-            description = message_data.get('group_description', '')
-            created_by = message_data.get('created_by')
-            members = message_data.get('members', [])
-            avatar_path = message_data.get('avatar_path', '')
-
-            # Check if group already exists
-            existing_group = self.db.get_group(group_id)
-            if not existing_group:
-                # Create the group
-                self.db.create_group(
-                    group_id,
-                    group_name,
-                    description,
-                    created_by,
-                    avatar_path
-                )
-
-                # Add members
-                for member_id in members:
-                    # Add all members from the invitation
-                    try:
-                        # Check if contact exists in database
-                        contact = self.db.get_contact(member_id)
-                        if contact:
-                            role = 'admin' if member_id == created_by else 'member'
-                            self.db.add_group_member(group_id, member_id, role)
-                    except Exception as e:
-                        print(f"Error adding member {member_id} to group: {e}")
-
-                # Add current user if not already in members
-                if self.messenger.user_id not in members:
-                    self.db.add_group_member(
-                        group_id,
-                        self.messenger.user_id,
-                        'member'
-                    )
-
-                # Show notification
-                if self.notification_handler:
-                    self.notification_handler.show_notification(
-                        "New Group",
-                        f"You've been added to group: {group_name}"
-                    )
-
-                # Refresh contact list
-                wx.CallAfter(self.contact_list.refresh_contacts)
-
-        except Exception as e:
-            self.logger.error(f"Error handling group invitation: {e}")
-            import traceback
-            traceback.print_exc()
 
     def load_profile_picture(self):
         """Load and update profile picture"""
@@ -486,20 +367,11 @@ class MainWindow(wx.Frame):
         print("Debug: MainWindow.on_contact_selected called")
         try:
             contact_id = self.contact_list.get_selected_contact_id()
-            is_group = self.contact_list.is_selected_item_group()
-            print(f"Debug: Selected item ID: {contact_id}, is_group: {is_group}")
+            print(f"Debug: Selected contact ID: {contact_id}")
 
             if contact_id:
-                if is_group:
-                    # Switch to group chat notebook page
-                    self.chat_notebook.SetSelection(1)
-                    print(f"Debug: Loading group chat with ID: {contact_id}")
-                    self.group_chat_panel.load_group(contact_id)
-                else:
-                    # Switch to regular chat notebook page
-                    self.chat_notebook.SetSelection(0)
-                    print(f"Debug: Loading regular chat with ID: {contact_id}")
-                    self.chat_panel.load_chat(contact_id)
+                print(f"Debug: Calling chat_panel.load_chat with ID: {contact_id}")
+                self.chat_panel.load_chat(contact_id)
             else:
                 print("Debug: No contact ID available")
         except Exception as e:
@@ -509,21 +381,11 @@ class MainWindow(wx.Frame):
 
     # Add this to MainWindow after creating contact_list and chat_panel
     def connect_panels(self):
-        """Connect the contact_list and chat panels directly"""
+        """Connect the contact_list and chat_panel directly"""
         try:
-            # Create a simple handler that only loads the chat with the selected ID
-            def on_contact_selected_direct(item_data, is_group=False):
-                item_id = item_data['id']
-                print(f"Debug: Direct selection handler called with ID: {item_id}, is_group: {is_group}")
-
-                if is_group:
-                    # For groups, switch to group chat panel and load group
-                    self.chat_notebook.SetSelection(1)
-                    self.group_chat_panel.load_group(item_id)
-                else:
-                    # For direct chats, switch to regular chat panel and load chat
-                    self.chat_notebook.SetSelection(0)
-                    self.chat_panel.load_chat(item_id)
+            def on_contact_selected_direct(contact):
+                print(f"Debug: Direct contact selection handler called with ID: {contact['id']}")
+                self.chat_panel.load_chat(contact['id'])
 
             # Add a direct selection handler to contact_list
             self.contact_list.set_direct_selection_handler(on_contact_selected_direct)
@@ -532,3 +394,9 @@ class MainWindow(wx.Frame):
             print(f"ERROR in connect_panels: {e}")
             import traceback
             traceback.print_exc()
+
+    # Add this to ContactList class
+    def set_direct_selection_handler(self, handler):
+        """Set a direct handler for contact selection"""
+        self.direct_selection_handler = handler
+

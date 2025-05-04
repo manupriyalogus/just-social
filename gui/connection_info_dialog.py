@@ -1,5 +1,6 @@
 import wx
 import wx.adv
+import pyperclip
 
 
 class ConnectionInfoDialog(wx.Dialog):
@@ -7,7 +8,6 @@ class ConnectionInfoDialog(wx.Dialog):
         super().__init__(parent, title="Your Connection Information",
                          size=(500, 300))
 
-        self.user_text = None
         self.connection_info = connection_info
         self.init_ui()
         self.Center()

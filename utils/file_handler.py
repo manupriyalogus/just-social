@@ -6,11 +6,10 @@ import hashlib
 from PIL import Image
 import appdirs
 
-
 class FileHandler:
     def __init__(self, config):
         self.config = config
-        self.app_name = "JustSocial"
+        self.app_name = "WhatsAppClone"
         self.media_dir = os.path.join(appdirs.user_data_dir(self.app_name), "media")
         self.ensure_directories()
 
@@ -24,7 +23,7 @@ class FileHandler:
             os.path.join(self.media_dir, "voice"),
             os.path.join(self.media_dir, "temp")
         ]
-
+        
         for directory in directories:
             os.makedirs(directory, exist_ok=True)
 
@@ -79,10 +78,10 @@ class FileHandler:
     def _get_file_type(self, file_path):
         """Determine file type based on mime type"""
         mime_type, _ = mimetypes.guess_type(file_path)
-
+        
         if not mime_type:
             return 'document'
-
+            
         if mime_type.startswith('image/'):
             return 'image'
         elif mime_type.startswith('video/'):

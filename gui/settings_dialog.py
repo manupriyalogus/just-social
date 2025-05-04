@@ -1,5 +1,3 @@
-import shutil
-
 import wx
 import os
 import wx.adv

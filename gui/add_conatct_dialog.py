@@ -1,5 +1,8 @@
 import wx
 import wx.adv
+import os
+from PIL import Image
+import io
 
 
 class AddContactDialog(wx.Dialog):
@@ -59,6 +62,14 @@ class AddContactDialog(wx.Dialog):
 
         grid.AddGrowableCol(1, 1)  # Make the text fields expand horizontally
         sizer.Add(grid, 0, wx.EXPAND | wx.ALL, 10)
+
+        # Add note
+        # note = wx.StaticText(
+        #     parent,
+        #     label="Share this information securely with your contacts to receive messages."
+        # )
+        # note.SetForegroundColour(wx.Colour(128, 128, 128))
+        # sizer.Add(note, 0, wx.ALL, 10)
 
         return sizer
 

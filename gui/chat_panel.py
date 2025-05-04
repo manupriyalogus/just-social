@@ -3,6 +3,7 @@ import os
 import time
 from datetime import datetime
 import uuid
+
 import wx
 import wx.html2
 import json
@@ -14,13 +15,6 @@ from .message_input import MessageInput, EVT_MESSAGE_SEND  # Import the custom e
 class ChatPanel(wx.Panel):
     def __init__(self, parent, db, messenger, config):
         super().__init__(parent)
-        self.message_input = None
-        self.messages_view = None
-        self.contact_status = None
-        self.contact_name = None
-        self.header = None
-        self.refresh_timer = None
-        self.last_loaded_chat_id = None
         self.config = None
         self.db = db
         self.messenger = messenger
@@ -128,67 +122,17 @@ class ChatPanel(wx.Panel):
                 messages = []
                 print("DEBUG: No current chat ID, using empty message list")
 
-        # First, get the current scroll information before updating content
-        try:
-            position_script = """
-            (function() {
-                var scrollPos = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-                var scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-                var clientHeight = document.documentElement.clientHeight || window.innerHeight;
-
-                // Check if we're at the bottom
-                var atBottom = (scrollHeight - scrollPos - clientHeight < 50);
-
-                return JSON.stringify({
-                    pos: scrollPos,
-                    atBottom: atBottom
-                });
-            })();
-            """
-
-            result = self.messages_view.RunScript(position_script)
-            if result:
-                scroll_info = json.loads(result)
-                at_bottom = scroll_info.get('atBottom', True)  # Default to True if undefined
-                print(f"DEBUG: User was at bottom: {at_bottom}")
-            else:
-                at_bottom = True
-        except Exception as e:
-            print(f"DEBUG: Error getting scroll position: {e}")
-            at_bottom = True  # Default if there's an error
-
-        # Generate HTML content without any auto-scroll scripts
         html_content = self.get_messages_html(messages)
-
-        # Set the content
         self.messages_view.SetPage(html_content, "")
         print("DEBUG: Set page content in WebView")
 
-        # Only scroll to bottom if the user was already at the bottom
-        # or if this is a fresh chat (first load)
-        if at_bottom or not hasattr(self, 'last_loaded_chat_id') or self.last_loaded_chat_id != self.current_chat_id:
-            # We use a delayed approach to ensure the content is fully rendered
-            def do_scroll_to_bottom():
-                try:
-                    scroll_script = "window.scrollTo(0, document.body.scrollHeight);"
-                    self.messages_view.RunScript(scroll_script)
-                    print("DEBUG: Scrolled to bottom")
-                except Exception as e:
-                    print(f"WARNING: Could not scroll to bottom: {e}")
-
-            # Delay the scroll to ensure rendering is complete
-            wx.CallLater(100, do_scroll_to_bottom)
-
-        # Remember which chat we last loaded
-        self.last_loaded_chat_id = self.current_chat_id
-
-        # Mark messages as read
-        self.db.mark_messages_as_read(self.current_chat_id)
+        # Scroll to bottom - use RunScript instead of ExecuteScript
+        #self.scroll_to_bottom()
 
     def scroll_to_bottom(self):
         """Scroll the message view to the bottom"""
         try:
-            self.messages_view.RunScript("setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);")
+            self.messages_view.RunScript("window.scrollTo(0, document.body.scrollHeight);")
             print("DEBUG: Executed scroll script")
         except AttributeError:
             # Try alternative method for older wxPython versions

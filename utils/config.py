@@ -2,10 +2,9 @@ import json
 import os
 import appdirs
 
-
 class Config:
     def __init__(self):
-        self.app_name = "JustSocial"
+        self.app_name = "WhatsAppClone"
         self.config_dir = appdirs.user_config_dir(self.app_name)
         self.config_file = os.path.join(self.config_dir, "config.json")
         self.config = self.load_config()

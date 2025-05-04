@@ -11,14 +11,12 @@ from nacl.encoding import HexEncoder
 import wx
 import logging
 import base64
-import uuid
+
+from . import TorService  # Assuming this contains your TorService class
 
 
 class TorMessenger:
     def __init__(self, user_id, message_callback=None, socks_port=5000, tor_port=9050, tor_binary=None):
-        self.status_update_callback = None
-        self.public_key = None
-        self.private_key = None
         self.user_id = user_id
         self.message_callback = message_callback
         self.logger = logging.getLogger('TorMessenger')
@@ -129,66 +127,14 @@ class TorMessenger:
 
                 decrypted_message = self.decrypt_message(encrypted_message, sender_public_key)
 
-                # Try to parse as JSON to check for special message types
-                try:
-                    # Try to parse the message as JSON to check for group message
-                    message_data = json.loads(decrypted_message)
-                    if isinstance(message_data, dict):
-                        # Check for group invitation
-                        if message_data.get('type') == 'group_invitation':
-                            # Notify the UI
-                            if self.message_callback:
-                                wx.CallAfter(self.message_callback, {
-                                    'sender_id': sender_id,
-                                    'sender_public_key': sender_public_key,
-                                    'is_group_invitation': True,
-                                    'group_id': message_data.get('group_id'),
-                                    'group_name': message_data.get('group_name'),
-                                    'group_description': message_data.get('group_description', ''),
-                                    'created_by': message_data.get('created_by'),
-                                    'members': message_data.get('members', []),
-                                    'avatar_path': message_data.get('avatar_path', ''),
-                                    'timestamp': message_data.get('timestamp', time.time())
-                                })
-
-                                return jsonify({"status": "success"}), 200
-
-                        # Check for group message
-                        elif message_data.get('type') == 'group_message':
-                            is_group_message = True
-                            group_id = message_data.get('group_id')
-                            actual_message = message_data.get('content')
-                            # Use the actual message content for group messages
-                            decrypted_message = actual_message
-
-                            # Notify the UI if a callback is set
-                            if self.message_callback:
-                                message_data = {
-                                    'sender_id': sender_id,
-                                    'message': decrypted_message,
-                                    'timestamp': message_data.get('timestamp', time.time()),
-                                    'sender_public_key': sender_public_key,
-                                    'is_group_message': True,
-                                    'group_id': group_id
-                                }
-
-                                wx.CallAfter(self.message_callback, message_data)
-
-                            return jsonify({"status": "success"}), 200
-                except json.JSONDecodeError:
-                    # Not a JSON message, treat as regular message
-                    pass
-
-                # Regular direct message handling
+                # Notify the UI if a callback is set
                 if self.message_callback:
-                    message_data = {
+                    wx.CallAfter(self.message_callback, {
                         'sender_id': sender_id,
                         'message': decrypted_message,
                         'timestamp': time.time(),
                         'sender_public_key': sender_public_key
-                    }
-
-                    wx.CallAfter(self.message_callback, message_data)
+                    })
 
                 return jsonify({"status": "success"}), 200
 
@@ -253,129 +199,6 @@ class TorMessenger:
                 wx.CallAfter(self.status_update_callback, message_id, 'failed')
 
             return False
-
-    def send_group_message(self, group_id, members, message, message_id=None):
-        """
-        Send a message to multiple group members
-
-        Args:
-            group_id: The ID of the group
-            members: List of member dictionaries with contact info
-            message: The message text to send
-            message_id: Optional ID to track the message
-
-        Returns:
-            dict: Dictionary of results by member ID
-        """
-        if not message_id:
-            message_id = f"grp_{uuid.uuid4().hex}"
-
-        # Store the base message ID for database tracking
-        base_message_id = message_id
-
-        results = {}
-        sent_count = 0
-
-        # Create group message wrapper
-        group_message = json.dumps({
-            'type': 'group_message',
-            'group_id': group_id,
-            'sender_id': self.user_id,
-            'content': message,
-            'timestamp': time.time(),
-            'message_id': base_message_id  # Include the base message ID here
-        })
-
-        # Send to each member
-        for member in members:
-            # Skip sending to ourselves
-            if member.get('id') == self.user_id:
-                continue
-
-            # Only send to members with connection info
-            if member.get('onion_address') and member.get('public_key'):
-                # Create a unique message ID for each recipient
-                member_message_id = f"{base_message_id}_{member.get('id')}"
-
-                # Send the message
-                result = self.send_message(
-                    member.get('onion_address'),
-                    member.get('public_key'),
-                    group_message,
-                    member_message_id
-                )
-
-                results[member.get('id')] = result
-                if result:
-                    sent_count += 1
-
-        # Update the status of the base message ID to indicate it's been sent
-        if self.status_update_callback:
-            wx.CallAfter(self.status_update_callback, base_message_id, 'sent')
-
-        # Return success if at least one message was sent
-        return {
-            'success': sent_count > 0,
-            'sent_count': sent_count,
-            'total_members': len(members) - 1,  # Exclude self
-            'results': results,
-            'message_id': base_message_id
-        }
-
-    def send_group_invitation(self, group_data, members):
-        """
-        Send group invitation to all members
-
-        Args:
-            group_data: Dictionary with group information
-            members: List of member dictionaries with contact info
-
-        Returns:
-            dict: Dictionary of results by member ID
-        """
-        results = {}
-        sent_count = 0
-
-        # Create invitation message
-        invitation = {
-            'type': 'group_invitation',
-            'group_id': group_data['id'],
-            'group_name': group_data['name'],
-            'group_description': group_data.get('description', ''),
-            'created_by': group_data['created_by'],
-            'members': [m['id'] for m in members],
-            'avatar_path': group_data.get('avatar_path', ''),
-            'timestamp': time.time()
-        }
-
-        # Convert to JSON
-        invitation_json = json.dumps(invitation)
-
-        # Send to each member
-        for member in members:
-            # Skip sending to ourselves
-            if member.get('id') == self.user_id:
-                continue
-
-            # Send the invitation message
-            if member.get('onion_address') and member.get('public_key'):
-                result = self.send_message(
-                    member['onion_address'],
-                    member['public_key'],
-                    invitation_json
-                )
-
-                results[member.get('id')] = result
-                if result:
-                    sent_count += 1
-
-        # Return results
-        return {
-            'success': sent_count > 0,
-            'sent_count': sent_count,
-            'total_members': len(members) - 1,  # Exclude self
-            'results': results
-        }
 
     def _send_message_thread(self, recipient_address, recipient_public_key, message, message_id):
         """Background thread to send message and handle response"""
@@ -516,10 +339,27 @@ class TorMessenger:
             sender_key = PublicKey(sender_public_key.encode(), encoder=HexEncoder)
             box = Box(self.private_key, sender_key)
             decrypted = box.decrypt(encrypted_message.encode(), encoder=HexEncoder)
+            print("msggg")
+            print(decrypted)
             return decrypted.decode()
         except Exception as e:
             self.logger.error(f"Decryption error: {e}")
             raise
+
+    def get_message_status(self, message_id):
+        """Get current status of a message by ID"""
+        if message_id in self.pending_messages:
+            return self.pending_messages[message_id]['status']
+        return None
+
+    def mark_as_read(self, message_id):
+        """Mark a message as read"""
+        if message_id in self.pending_messages and self.pending_messages[message_id]['status'] == 'delivered':
+            self.pending_messages[message_id]['status'] = 'read'
+            if self.status_update_callback:
+                wx.CallAfter(self.status_update_callback, message_id, 'read')
+            return True
+        return False
 
     def close(self):
         """Clean up resources"""
