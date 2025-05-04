@@ -10,7 +10,7 @@ from datetime import datetime
 
 class Database:
     def __init__(self):
-        self.app_name = "WhatsAppClone"
+        self.app_name = "JustSocial"
         self.data_dir = appdirs.user_data_dir(self.app_name)
         self.db_file = os.path.join(self.data_dir, "chat.db")
 

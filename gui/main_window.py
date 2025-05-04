@@ -249,7 +249,7 @@ class MainWindow(wx.Frame):
 
     def on_about(self, event):
         info = wx.adv.AboutDialogInfo()
-        info.SetName("WhatsApp Clone")
+        info.SetName("JustSocial")
         info.SetVersion("1.0")
         info.SetDescription("A secure messaging application using Tor network")
         info.SetCopyright("(C) 2025")

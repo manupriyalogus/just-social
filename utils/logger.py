@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 import appdirs
 
 class Logger:
-    def __init__(self, app_name="WhatsAppClone"):
+    def __init__(self, app_name="JustSocial"):
         self.app_name = app_name
         self.log_dir = os.path.join(appdirs.user_log_dir(app_name))
         os.makedirs(self.log_dir, exist_ok=True)

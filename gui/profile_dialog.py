@@ -15,7 +15,7 @@ class ProfileDialog(wx.Dialog):
         self.keys_file = keys_file
         self.init_ui()
         self.Center()
-        self.app_name = "WhatsAppClone"
+        self.app_name = "JustSocial"
         self.data_dir = appdirs.user_data_dir(self.app_name)
 
     def init_ui(self):

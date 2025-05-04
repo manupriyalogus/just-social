@@ -11,7 +11,7 @@ from stem.process import launch_tor_with_config
 
 class TorService:
     def __init__(self, hidden_service_port=5000, socks_port=9050, tor_binary=None):
-        self.logger = logging.getLogger('WhatsAppClone')
+        self.logger = logging.getLogger('JustSocial')
         self.hidden_service_port = hidden_service_port
         self.hidden_service_dir = None
         self.onion_address = None

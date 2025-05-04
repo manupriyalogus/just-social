@@ -9,7 +9,7 @@ import appdirs
 class FileHandler:
     def __init__(self, config):
         self.config = config
-        self.app_name = "WhatsAppClone"
+        self.app_name = "JustSocial"
         self.media_dir = os.path.join(appdirs.user_data_dir(self.app_name), "media")
         self.ensure_directories()
 

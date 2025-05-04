@@ -12,7 +12,7 @@ from utils.notification_handler import NotificationHandler
 from utils.file_handler import FileHandler
 
 
-class WhatsAppClone(wx.App):
+class JustSocial(wx.App):
     def InitLogging(self):
         """Initialize logging before anything else"""
         try:
@@ -30,7 +30,7 @@ class WhatsAppClone(wx.App):
                           "Error", wx.OK | wx.ICON_ERROR)
             return False
 
-        self.logger.info("Starting WhatsApp Clone application")
+        self.logger.info("Starting JustSocial application")
 
         try:
             # Initialize core components
@@ -75,7 +75,7 @@ class WhatsAppClone(wx.App):
 
     def ensure_single_instance(self):
         """Ensure only one instance of the application is running"""
-        self.instance_checker = wx.SingleInstanceChecker("WhatsAppClone-" + wx.GetUserId())
+        self.instance_checker = wx.SingleInstanceChecker("JustSocial-" + wx.GetUserId())
 
         if self.instance_checker.IsAnotherRunning():
             wx.MessageBox("Another instance of WhatsApp Clone is already running.",
@@ -216,7 +216,7 @@ def main():
 
     try:
         # Create and start the application
-        app = WhatsAppClone()
+        app = JustSocial()
         app.MainLoop()
         return 0
     except Exception as e:

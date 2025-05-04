@@ -63,7 +63,7 @@ class NotificationHandler:
         """Show notification on Linux"""
         try:
             import notify2
-            notify2.init("WhatsApp Clone")
+            notify2.init("JustSocial")
             notification = notify2.Notification(
                 title,
                 message,
